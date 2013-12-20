@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 8
+local MAJOR, MINOR = "LibOO-1.0", 9
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -73,8 +73,8 @@ local function validateType(argN, methodName, var, reqType)
     
     local isGood
     if negate then
-        if varType == reqType then
-            isGood = false
+        if varType ~= reqType then
+            isGood = true
         end
     else
         if varType == reqType then
@@ -90,6 +90,10 @@ local function validateType(argN, methodName, var, reqType)
             varTypeName = "frame (" .. var:GetObjectType() .. ")"
         end
 
+        if negate then 
+        	reqType = "!" .. reqType
+        end
+        
         error(("Bad argument #%s to %q. Expected %s, got %s"):format(argN, methodName, reqType, varTypeName), 3)
     end
 end
