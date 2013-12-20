@@ -1,0 +1,6 @@
+package-as: LibOO-1.0
+enable-nolib-creation: no
+
+externals:
+    libs/CallbackHandler-1.0: svn://svn.wowace.com/wow/callbackhandler/mainline/trunk/CallbackHandler-1.0
+    libs/LibStub: svn://svn.wowace.com/wow/libstub/mainline/trunk/
