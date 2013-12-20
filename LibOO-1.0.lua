@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 7
+local MAJOR, MINOR = "LibOO-1.0", 8
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -325,8 +325,7 @@ local function NewClass(namespace, className, ...)
 
     namespace[className] = class
 
-    --TODO: add callback handler support here
-    --TMW:Fire("TMW_CLASS_NEW", class)
+    namespace.__callbacks:Fire("OnNewClass", class)
 
     return class
 end
@@ -339,6 +338,7 @@ function LibOO:GetNamespace(namespace)
 
     if not ns then
         ns = {NewClass = NewClass}
+        ns.__callbacks = LibStub("CallbackHandler-1.0"):New(ns)
         LibOO.Namespaces[namespace] = ns
     end
 
@@ -423,8 +423,7 @@ function Class:NewFromExisting(instance, ...)
 
     instance:CallFunc("OnNewInstance", ...)
     
-    -- TODO: CALLBACK HANDLER SUPPORT
-    --TMW:Fire("TMW_CLASS_" .. self.className .. "_INSTANCE_NEW", self, instance)
+    self.namespace.__callbacks:Fire("OnNewInstance", self, instance)
     
     return instance
 end
