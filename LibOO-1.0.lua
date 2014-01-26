@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 9
+local MAJOR, MINOR = "LibOO-1.0", 10
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -14,88 +14,88 @@ local select, pairs, ipairs, type, tostring = select, pairs, ipairs, type, tostr
 
 local safecall
 do
-    local function errorhandler(err)
-        return geterrorhandler()(err)
-    end
+	local function errorhandler(err)
+		return geterrorhandler()(err)
+	end
 
-    local function CreateDispatcher(argCount)
-        local code = [[
-            local xpcall, eh = ...
-            local method, ARGS
-            local function call() return method(ARGS) end
-        
-            local function dispatch(func, ...)
-                 method = func
-                 if not method then return end
-                 ARGS = ...
-                 return xpcall(call, eh)
-            end
-        
-            return dispatch
-        ]]
-        
-        local ARGS = {}
-        for i = 1, argCount do ARGS[i] = "arg"..i end
-        code = code:gsub("ARGS", tconcat(ARGS, ", "))
-        return assert(loadstring(code, "safecall Dispatcher["..argCount.."]"))(xpcall, errorhandler)
-    end
+	local function CreateDispatcher(argCount)
+		local code = [[
+			local xpcall, eh = ...
+			local method, ARGS
+			local function call() return method(ARGS) end
+		
+			local function dispatch(func, ...)
+				 method = func
+				 if not method then return end
+				 ARGS = ...
+				 return xpcall(call, eh)
+			end
+		
+			return dispatch
+		]]
+		
+		local ARGS = {}
+		for i = 1, argCount do ARGS[i] = "arg"..i end
+		code = code:gsub("ARGS", tconcat(ARGS, ", "))
+		return assert(loadstring(code, "safecall Dispatcher["..argCount.."]"))(xpcall, errorhandler)
+	end
 
-    local Dispatchers = setmetatable({}, {__index=function(self, argCount)
-        local dispatcher = CreateDispatcher(argCount)
-        rawset(self, argCount, dispatcher)
-        return dispatcher
-    end})
-    Dispatchers[0] = function(func)
-        return xpcall(func, errorhandler)
-    end
-     
-    safecall = function(func, ...)
-        return Dispatchers[select('#', ...)](func, ...)
-    end
+	local Dispatchers = setmetatable({}, {__index=function(self, argCount)
+		local dispatcher = CreateDispatcher(argCount)
+		rawset(self, argCount, dispatcher)
+		return dispatcher
+	end})
+	Dispatchers[0] = function(func)
+		return xpcall(func, errorhandler)
+	end
+	 
+	safecall = function(func, ...)
+		return Dispatchers[select('#', ...)](func, ...)
+	end
 end
 
 local function validateType(argN, methodName, var, reqType)
-    local varType = type(var)
-    
-    local negate = reqType:sub(1, 1) == "!"
-    local reqType = negate and reqType:sub(2) or reqType
-    reqType = reqType:trim(" ")
-    
-    if varType == "table" then
-        if type(var[0]) == "userdata" then
-            if reqType == "frame" or reqType == "widget" then
-                varType = reqType
-            elseif var:IsObjectType(reqType) then
-                varType = reqType
-            end
-        end
-    end
-    
-    local isGood
-    if negate then
-        if varType ~= reqType then
-            isGood = true
-        end
-    else
-        if varType == reqType then
-            isGood = true
-        end
-    end
+	local varType = type(var)
+	
+	local negate = reqType:sub(1, 1) == "!"
+	local reqType = negate and reqType:sub(2) or reqType
+	reqType = reqType:trim(" ")
+	
+	if varType == "table" then
+		if type(var[0]) == "userdata" then
+			if reqType == "frame" or reqType == "widget" then
+				varType = reqType
+			elseif var:IsObjectType(reqType) then
+				varType = reqType
+			end
+		end
+	end
+	
+	local isGood
+	if negate then
+		if varType ~= reqType then
+			isGood = true
+		end
+	else
+		if varType == reqType then
+			isGood = true
+		end
+	end
 
 
-    if not isGood then
-    
-        local varTypeName = varType
-        if varType == "table" and type(var[0]) == "userdata" then
-            varTypeName = "frame (" .. var:GetObjectType() .. ")"
-        end
+	if not isGood then
+	
+		local varTypeName = varType
+		if varType == "table" and type(var[0]) == "userdata" then
+			varTypeName = "frame (" .. var:GetObjectType() .. ")"
+		end
 
-        if negate then 
-        	reqType = "!" .. reqType
-        end
-        
-        error(("Bad argument #%s to %q. Expected %s, got %s"):format(argN, methodName, reqType, varTypeName), 3)
-    end
+		if negate then 
+			reqType = "!" .. reqType
+		end
+		
+		error(("Bad argument #%s to %q. Expected %s, got %s"):format(argN, methodName, reqType, varTypeName), 3)
+	end
 end
 
 
@@ -106,170 +106,170 @@ local LibOONamespace
 
 
 local metamethods = {
-    __add = true,
-    __call = true,
-    __concat = true,
-    __div = true,
-    __le = true,
-    __lt = true,
-    __mod = true,
-    __mul = true,
-    __pow = true,
-    __sub = true,
-    __tostring = true,
-    __unm = true,
+	__add = true,
+	__call = true,
+	__concat = true,
+	__div = true,
+	__le = true,
+	__lt = true,
+	__mod = true,
+	__mul = true,
+	__pow = true,
+	__sub = true,
+	__tostring = true,
+	__unm = true,
 }
 
 local function callFunc(class, instance, func, ...)
 
-    -- check for all functions that dont match exactly, like OnNewInstance_1, _foo, _bar, ...
-    for k, v in pairs(class.instancemeta.__index) do
-        if type(k) == "string" and k:find("^" .. func) and k ~= func then
-            safecall(v, instance, ...)
-        end
-    end
-    
-    if instance.isLibOOInstance then
-        -- If this is being called on an instance of a class instead of a class,
-        -- search the instance itself for matching functions too.
-        -- This will never step on the toes of class.instancemeta.__index because
-        -- iterating over an instance will only yield things explicity set on an instance -
-        -- it will never directly contain anything inherited from a class.
-        for k, v in pairs(instance) do
-            if type(k) == "string" and k:find("^" .. func) and k ~= func then
-                safecall(v, instance, ...)
-            end
-        end
-    end
-    
-    
-    -- now check for the function that exactly matches. this should be called last because
-    -- it should be the function that handles the real class being instantiated, not any inherited classes
-    local normalFunc = instance[func]
-    if normalFunc then
-        safecall(normalFunc, instance, ...)
-    end
+	-- check for all functions that dont match exactly, like OnNewInstance_1, _foo, _bar, ...
+	for k, v in pairs(class.instancemeta.__index) do
+		if type(k) == "string" and k:find("^" .. func) and k ~= func then
+			safecall(v, instance, ...)
+		end
+	end
+	
+	if instance.isLibOOInstance then
+		-- If this is being called on an instance of a class instead of a class,
+		-- search the instance itself for matching functions too.
+		-- This will never step on the toes of class.instancemeta.__index because
+		-- iterating over an instance will only yield things explicity set on an instance -
+		-- it will never directly contain anything inherited from a class.
+		for k, v in pairs(instance) do
+			if type(k) == "string" and k:find("^" .. func) and k ~= func then
+				safecall(v, instance, ...)
+			end
+		end
+	end
+	
+	
+	-- now check for the function that exactly matches. this should be called last because
+	-- it should be the function that handles the real class being instantiated, not any inherited classes
+	local normalFunc = instance[func]
+	if normalFunc then
+		safecall(normalFunc, instance, ...)
+	end
 end
 
 local function initializeClass(self)
-    if not self.initialized then
-        -- set any defined metamethods
-        for k, v in pairs(self.instancemeta.__index) do
-            if metamethods[k] then
-                self.instancemeta[k] = v
-            end
-        end
-        
-        self:CallFunc("OnFirstInstance")
+	if not self.initialized then
+		-- set any defined metamethods
+		for k, v in pairs(self.instancemeta.__index) do
+			if metamethods[k] then
+				self.instancemeta[k] = v
+			end
+		end
+		
+		self:CallFunc("OnFirstInstance")
 
-        self.initialized = true
-    end
+		self.initialized = true
+	end
 end
 
 local class__call = function(self, arg)
-    -- allow something like Namespace:NewClass("Name"){Foo = function() end, Bar = 5}
-    if type(arg) == "table" then
-        for k, v in pairs(arg) do
-            if k == "METHOD_EXTENSIONS" and type(v) == "table" then
-                for methodName, func in pairs(v) do
-                    self:ExtendMethod(methodName, func)
-                end
-            else
-                self[k] = v
-            end
-        end
-    end
-    return self
+	-- allow something like Namespace:NewClass("Name"){Foo = function() end, Bar = 5}
+	if type(arg) == "table" then
+		for k, v in pairs(arg) do
+			if k == "METHOD_EXTENSIONS" and type(v) == "table" then
+				for methodName, func in pairs(v) do
+					self:ExtendMethod(methodName, func)
+				end
+			else
+				self[k] = v
+			end
+		end
+	end
+	return self
 end
 
 local class__newindex = function(self, k, v)
-    -- Update/set all subclasses at all levels of inheritance
-    local existing = self[k]
-    if existing ~= v then
-        for class in pairs(self.inheritedBy) do
-            if class[k] == existing then
-                class[k] = v
-            end
-        end
+	-- Update/set all subclasses at all levels of inheritance
+	local existing = self[k]
+	if existing ~= v then
+		for class in pairs(self.inheritedBy) do
+			if class[k] == existing then
+				class[k] = v
+			end
+		end
 
-        -- Update/set for this class
-        -- Note: class.instancemeta.__index == getmetatable(class).__index
-        -- We use .instancemeta here for speed
-        self.instancemeta.__index[k] = v
-    end
+		-- Update/set for this class
+		-- Note: class.instancemeta.__index == getmetatable(class).__index
+		-- We use .instancemeta here for speed
+		self.instancemeta.__index[k] = v
+	end
 end
 
 local weakMetatable = {
-    __mode = "kv"
+	__mode = "kv"
 }
 
 local inherit = function(self, source)
-    if source then
-        local metatable = getmetatable(self)
-        local namespace = self.namespace
-        
-        local index, didInherit
-        
-        -- LibOO class inheritance (passed in class name)
-        if namespace[source] then
-            namespace[source]:CallFunc("OnClassInherit", self)
-            
-            index = getmetatable(namespace[source]).__index
-            didInherit = true
-        
-        elseif type(source) == "table" then
+	if source then
+		local metatable = getmetatable(self)
+		local namespace = self.namespace
+		
+		local index, didInherit
+		
+		-- LibOO class inheritance (passed in class name)
+		if namespace[source] then
+			namespace[source]:CallFunc("OnClassInherit", self)
+			
+			index = getmetatable(namespace[source]).__index
+			didInherit = true
+		
+		elseif type(source) == "table" then
 
-            -- LibOO class inheritance (passed in class table)
-            if source.isLibOOClass and source.CallFunc then
-                source:CallFunc("OnClassInherit", self)
-                
-                index = getmetatable(source).__index
-                didInherit = true
+			-- LibOO class inheritance (passed in class table)
+			if source.isLibOOClass and source.CallFunc then
+				source:CallFunc("OnClassInherit", self)
+				
+				index = getmetatable(source).__index
+				didInherit = true
 
-            else
-                -- Table inheritance
-                index = source
-                didInherit = true
-            end
-        else
-        
-            -- Blizzard widget inheritance
-            local success, frame = pcall(CreateFrame, source)
-            if success and frame then
-                -- Need to do hide the frame or else if we made an editbox,
-                -- it will block all keyboard input for some reason
-                frame:Hide()
+			else
+				-- Table inheritance
+				index = source
+				didInherit = true
+			end
+		else
+		
+			-- Blizzard widget inheritance
+			local success, frame = pcall(CreateFrame, source)
+			if success and frame then
+				-- Need to do hide the frame or else if we made an editbox,
+				-- it will block all keyboard input for some reason
+				frame:Hide()
 
-                self.isFrameObject = source or self.isFrameObject
-                rawset(self, "isFrameObject", rawget(self, "isFrameObject") or source)
-                
-                metatable.__index.isFrameObject = metatable.__index.isFrameObject or source
-                
-                index = getmetatable(frame).__index
-                didInherit = true
-            
-            -- LibSub lib inheritance
-            elseif LibStub(source, true) then
-                local lib = LibStub(source, true)
-                if lib.Embed then
-                    lib:Embed(metatable.__index)
-                    didInherit = true
-                else
-                    error(format("Library %q does not have an Embed method", source), 2)
-                end
-            end
-        end
+				self.isFrameObject = source or self.isFrameObject
+				rawset(self, "isFrameObject", rawget(self, "isFrameObject") or source)
+				
+				metatable.__index.isFrameObject = metatable.__index.isFrameObject or source
+				
+				index = getmetatable(frame).__index
+				didInherit = true
+			
+			-- LibSub lib inheritance
+			elseif LibStub(source, true) then
+				local lib = LibStub(source, true)
+				if lib.Embed then
+					lib:Embed(metatable.__index)
+					didInherit = true
+				else
+					error(format("Library %q does not have an Embed method", source), 2)
+				end
+			end
+		end
 
-        if not didInherit then
-            error(("Could not figure out how to inherit %s into class %s. Are you sure it exists?"):format(source, self.className), 3)
-        end
-        
-        if index then
-            for k, source in pairs(index) do
-                metatable.__index[k] = (metatable.__index[k] ~= nil and metatable.__index[k]) or source
-            end
-        end
-    end
+		if not didInherit then
+			error(("Could not figure out how to inherit %s into class %s. Are you sure it exists?"):format(source, self.className), 3)
+		end
+		
+		if index then
+			for k, source in pairs(index) do
+				metatable.__index[k] = (metatable.__index[k] ~= nil and metatable.__index[k]) or source
+			end
+		end
+	end
 end
 
 
@@ -284,69 +284,69 @@ end
 -- When conflicts between members of different inherited things arise, previously inherited members will not be overwritten.
 -- @return [Class] A new class that inherits from LibOO:GetNamespace("LibOO-1.0").Class and all other requested inheritances.
 local function NewClass(namespace, className, ...)
-    validateType("2 (className)", "Namespace:NewClass(className, ...)", className, "string")
-    
-    if namespace[className] then
-        error(MAJOR .. ": A class with name " .. className .. " already exists. You can't overwrite existing classes, so pick a different name", 2)
-    end
-    
-    local metatable = {
-        __index = { -- this is class.instancemeta.__index as well.
-            isLibOOInstance = true,
-        },
-        __call = class__call,
-    }
-    
-    local class = {
-        instances = {},
-        inherits = {},
-        inheritedBy = {},
-        embeds = {},
-        initialized = false,
-        isLibOOClass = true,
-        isLibOOInstance = false, -- Override the instancemeta so classes don't think they are instances.
-    }
+	validateType("2 (className)", "Namespace:NewClass(className, ...)", className, "string")
+	
+	if namespace[className] then
+		error(MAJOR .. ": A class with name " .. className .. " already exists. You can't overwrite existing classes, so pick a different name", 2)
+	end
+	
+	local metatable = {
+		__index = { -- this is class.instancemeta.__index as well.
+			isLibOOInstance = true,
+		},
+		__call = class__call,
+	}
+	
+	local class = {
+		instances = {},
+		inherits = {},
+		inheritedBy = {},
+		embeds = {},
+		initialized = false,
+		isLibOOClass = true,
+		isLibOOInstance = false, -- Override the instancemeta so classes don't think they are instances.
+	}
 
-    class.instancemeta = {__index = metatable.__index}
-    
-    setmetatable(class, metatable)
-    metatable.__newindex = class__newindex
+	class.instancemeta = {__index = metatable.__index}
+	
+	setmetatable(class, metatable)
+	metatable.__newindex = class__newindex
 
-    -- Makes referencing the class really easy - don't have to define a class variable for instances,
-    -- and creates a unified way to definitely get the class for both classes and instances.
-    class.class = class
-    class.className = className
-    class.namespace = namespace
+	-- Makes referencing the class really easy - don't have to define a class variable for instances,
+	-- and creates a unified way to definitely get the class for both classes and instances.
+	class.class = class
+	class.className = className
+	class.namespace = namespace
 
-    if LibOONamespace then
-        inherit(class, LibOONamespace.Class)
-    end
+	if LibOONamespace then
+		inherit(class, LibOONamespace.Class)
+	end
 
-    -- Inherit the requested classes/whatever
-    for i = 1, select("#", ...) do
-        inherit(class, select(i, ...))
-    end
+	-- Inherit the requested classes/whatever
+	for i = 1, select("#", ...) do
+		inherit(class, select(i, ...))
+	end
 
-    namespace[className] = class
+	namespace[className] = class
 
-    namespace.__callbacks:Fire("OnNewClass", class)
+	namespace.__callbacks:Fire("OnNewClass", class)
 
-    return class
+	return class
 end
 
 
 function LibOO:GetNamespace(namespace)
-    validateType("2 (namespace)", "LibOO:GetNamespace(namespace)", namespace, "string")
+	validateType("2 (namespace)", "LibOO:GetNamespace(namespace)", namespace, "string")
 
-    local ns = LibOO.Namespaces[namespace]
+	local ns = LibOO.Namespaces[namespace]
 
-    if not ns then
-        ns = {NewClass = NewClass}
-        ns.__callbacks = LibStub("CallbackHandler-1.0"):New(ns)
-        LibOO.Namespaces[namespace] = ns
-    end
+	if not ns then
+		ns = {NewClass = NewClass}
+		ns.__callbacks = LibStub("CallbackHandler-1.0"):New(ns)
+		LibOO.Namespaces[namespace] = ns
+	end
 
-    return ns
+	return ns
 end
 
 -- Upgrade the NewClass method:
@@ -365,21 +365,19 @@ local Class = LibOONamespace.Class or LibOONamespace:NewClass("Class")
 -- All class methods and members will be accessed via metamethods.
 -- 
 -- If the class inherits from a Blizzard widget, any class methods that are valid script handler names for the widget type (like "OnClick" or "OnShow") will be hooked as script handlers on the instance.
--- @param ... [...] The constructor parameters of the new instance. If the class being instantiated inherits from a Blizzard widget, these will be passed directly to CreateFrame(...). In all cases, they will be passed to calls of any class methods whose name **begins** with "OnNewInstance" (E.g. {{{Class:OnNewInstance_Class(self, ...)}}}).
+-- @param ... [...] The constructor parameters of the new instance. If the class being instantiated inherits from a Blizzard widget, these will be passed directly to CreateFrame(...), and parameters after the 5th (the CreateFrame ID parameter) will be passed to calls of any class methods whose name **begins** with "OnNewInstance" (E.g. {{{Class:OnNewInstance_Class(self, ...)}}}). If this class does not inherit from a Blizzard, widget, all parameters will be passed to these calls.
 -- @return A new instance of the class.
 function Class:New(...)
-    if self.isLibOOInstance then
-        self = self.class
-    end
-    
-    local instance
-    if self.isFrameObject then
-        instance = CreateFrame(...)
-    else
-        instance = {}
-    end
-    
-    return self:NewFromExisting(instance, ...)
+	if self.isLibOOInstance then
+		self = self.class
+	end
+	
+	if self.isFrameObject then
+		return self:NewFromExisting(CreateFrame(...), select(6, ...))
+	else
+		return self:NewFromExisting({}, ...)
+	end
+	
 end
 
 --- Creates an instance of the class out of an existing object. No additional memory is allocated to perform this.
@@ -390,46 +388,46 @@ end
 -- @param ... [...] The constructor parameters of the new instance. In all cases, they will be passed to calls of any class methods whose name **begins** with "OnNewInstance" (E.g. {{{Class:OnNewInstance_Class(self, ...)}}}).
 -- @return A new instance of the class.
 function Class:NewFromExisting(instance, ...)
-    validateType("2 (instance)", "Class:NewFromExisting(instance, ...)", instance, "table")
+	validateType("2 (instance)", "Class:NewFromExisting(instance, ...)", instance, "table")
 
-    if instance.isLibOOInstance then
-        error("Cannot instantiate something that has already been instantiated!", 2)
-    end
+	if instance.isLibOOInstance then
+		error("Cannot instantiate something that has already been instantiated!", 2)
+	end
 
-    local isWidget = type(instance[0]) == "userdata"
+	local isWidget = type(instance[0]) == "userdata"
 
-    if not isWidget and self.isFrameObject then
-        error("Widget classes must be instantiated with widgets.", 2)
-    elseif isWidget then
-        if not self.isFrameObject then
-            error("Non-widget classes must be instantiated on non-widgets.", 2)
-        elseif instance:GetObjectType() ~= self.isFrameObject then
-            error("Expected a " .. self.isFrameObject .. " widget, got a " .. instance:GetObjectType(), 2)
-        end
-    end
+	if not isWidget and self.isFrameObject then
+		error("Widget classes must be instantiated with widgets.", 2)
+	elseif isWidget then
+		if not self.isFrameObject then
+			error("Non-widget classes must be instantiated on non-widgets.", 2)
+		elseif instance:GetObjectType() ~= self.isFrameObject then
+			error("Expected a " .. self.isFrameObject .. " widget, got a " .. instance:GetObjectType(), 2)
+		end
+	end
 
-    if self.isLibOOInstance then
-        self = self.class
-    end
+	if self.isLibOOInstance then
+		self = self.class
+	end
 
-    -- if this is the first instance of the class, do some magic to it:
-    initializeClass(self)
+	-- if this is the first instance of the class, do some magic to it:
+	initializeClass(self)
 
-    setmetatable(instance, self.instancemeta)
+	setmetatable(instance, self.instancemeta)
 
-    self.instances[#self.instances + 1] = instance
-    
-    for k, v in pairs(self.instancemeta.__index) do
-        if self.isFrameObject and instance.HasScript and instance:HasScript(k) then
-            instance:HookScript(k, v)
-        end
-    end
+	self.instances[#self.instances + 1] = instance
+	
+	for k, v in pairs(self.instancemeta.__index) do
+		if self.isFrameObject and instance.HasScript and instance:HasScript(k) then
+			instance:HookScript(k, v)
+		end
+	end
 
-    instance:CallFunc("OnNewInstance", ...)
-    
-    self.namespace.__callbacks:Fire("OnNewInstance", self, instance)
-    
-    return instance
+	instance:CallFunc("OnNewInstance", ...)
+	
+	self.namespace.__callbacks:Fire("OnNewInstance", self, instance)
+	
+	return instance
 end
 
 
@@ -442,18 +440,18 @@ end
 -- @param method [String] The name of the method on the class that should be extended.
 -- @param newFunction [Function] The function that will be called after the original function is called.
 function Class:ExtendMethod(method, newFunction)
-    validateType("2 (method)", "Class:ExtendMethod(method, newFunction)", method, "!nil")
-    validateType("3 (newFunction)", "Class:ExtendMethod(method, newFunction)", newFunction, "function")
+	validateType("2 (method)", "Class:ExtendMethod(method, newFunction)", method, "!nil")
+	validateType("3 (newFunction)", "Class:ExtendMethod(method, newFunction)", newFunction, "function")
 
-    local existingFunction = self[method]
-    if existingFunction then
-        self[method] = function(...)
-            existingFunction(...)
-            newFunction(...)
-        end
-    else
-        self[method] = newFunction
-    end
+	local existingFunction = self[method]
+	if existingFunction then
+		self[method] = function(...)
+			existingFunction(...)
+			newFunction(...)
+		end
+	else
+		self[method] = newFunction
+	end
 end
 
 
@@ -462,18 +460,18 @@ end
 -- 
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsClass()
-    if not self.isLibOOClass then
-        error(("Caller must be the class %q, not an instance of the class"):format(self.className), 3)
-    end
+	if not self.isLibOOClass then
+		error(("Caller must be the class %q, not an instance of the class"):format(self.className), 3)
+	end
 end
 
 --- Asserts that self is an instance of a TellMeWhen class.
 -- 
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsInstance()
-    if not self.isLibOOInstance then
-        error(("Caller must be an instance of the class %q, not the class itself"):format(self.className), 3)
-    end
+	if not self.isLibOOInstance then
+		error(("Caller must be an instance of the class %q, not the class itself"):format(self.className), 3)
+	end
 end
 
 
@@ -484,9 +482,9 @@ end
 -- @param [string|table] The source that should be inherited into the class.
 -- @see Namespace:NewClass()
 function Class:Inherit(source)
-    self:AssertSelfIsClass()
+	self:AssertSelfIsClass()
 
-    inherit(self, source)
+	inherit(self, source)
 end
 
 --- Copies the requested source table into the caller (caller can be a class or an instance of a class).
@@ -510,15 +508,15 @@ end
 -- 
 -- @return [table] The destination table - self[tableKey].
 function Class:InheritTable(source, tableKey)
-    validateType("2 (source)", "Class:InheritTable(source, tableKey)", source, "table")
-    validateType("3 (tableKey)", "Class:InheritTable(source, tableKey)", tableKey, "!nil")
-    
-    self[tableKey] = {}
-    for k, v in pairs(source[tableKey]) do
-        self[tableKey][k] = v
-    end
-    
-    return self[tableKey]
+	validateType("2 (source)", "Class:InheritTable(source, tableKey)", source, "table")
+	validateType("3 (tableKey)", "Class:InheritTable(source, tableKey)", tableKey, "!nil")
+	
+	self[tableKey] = {}
+	for k, v in pairs(source[tableKey]) do
+		self[tableKey][k] = v
+	end
+	
+	return self[tableKey]
 end
 
 --- Calls all the functions of a class that begin with funcName.
@@ -536,31 +534,31 @@ end
 -- -- Functions as the instance constructor. See the How To page for more info.
 -- instance:CallFunc("OnNewInstance", ...)
 function Class:CallFunc(funcName, ...)
-    if self.isLibOOClass then
-        callFunc(self, self, funcName, ...)
-    else
-        callFunc(self.class, self, funcName, ...)
-    end
+	if self.isLibOOClass then
+		callFunc(self, self, funcName, ...)
+	else
+		callFunc(self.class, self, funcName, ...)
+	end
 end
 
 
 --- Sets the __mode metamethod of the instances table of the class to "kv" so that instances will be garbage collected when they are orphaned everywhere else.
 -- This behavior will not be inherited by subclasses. Keep in mind that Blizzard Frames cannot be garbage collected.
 function Class:MakeInstancesWeak()
-    setmetatable(self.instances, weakMetatable)
+	setmetatable(self.instances, weakMetatable)
 end
 
 
 
 -- [INTERNAL]
 function Class:OnClassInherit_BaseClass(newClass)
-    for class in pairs(self.inherits) do
-        newClass.inherits[class] = true
-        class.inheritedBy[newClass] = true
-    end
-    
-    newClass.inherits[self] = true
-    self.inheritedBy[newClass] = true
+	for class in pairs(self.inherits) do
+		newClass.inherits[class] = true
+		class.inheritedBy[newClass] = true
+	end
+	
+	newClass.inherits[self] = true
+	self.inheritedBy[newClass] = true
 end
 
 
