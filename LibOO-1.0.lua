@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 11
+local MAJOR, MINOR = "LibOO-1.0", 12
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -241,6 +241,17 @@ local function inherit(self, source)
 		local index, didInherit
 		
 		-- LibOO class inheritance (passed in class name)
+		if type(source) == "string" then
+			local ns, class = source:match("([^%.]*)%.(.*)")
+			if ns and class then
+				if LibOO.Namespaces[ns] then
+					namespace = LibOO.Namespaces[ns]
+					source = class
+					print(namespace, source)
+				end
+			end
+		end
+
 		if namespace[source] then
 			namespace[source]:CallFunc("OnClassInherit", self)
 			
@@ -306,7 +317,8 @@ end
 --- Creates a new class.
 -- @param className [String] The name of the class to be created.
 -- @param ... [...] A list of things to inherit from. Valid parameters include the following (and each will be checked in the following order):
--- * The name of another TellMeWhen class.
+-- * The name of another LibOO-1.0 class in the same namespace as the class being created.
+-- * The namespace and name for another LibOO-1.0 class, formatted as "Namespace.ClassName".
 -- * A table whose values will be merged into the class.
 -- * The name of a Blizzard widget (like Frame, Button, EditBox, etc.) The class created will inherit the methods of that widget type, and instances of the class will be based on a new frame of that widget type.
 -- * The name of a LibStub library that has an :Embed() method (many Ace3 libs do).
@@ -332,7 +344,6 @@ local function NewClass(namespace, className, ...)
 		instances = {},
 		inherits = {},
 		inheritedBy = {},
-		embeds = {},
 		initialized = false,
 		isLibOOClass = true,
 		isLibOOInstance = false, -- Override the instancemeta so classes don't think they are instances.
@@ -377,6 +388,10 @@ function LibOO:GetNamespace(namespace)
 	local ns = LibOO.Namespaces[namespace]
 
 	if not ns then
+		if namespace:find("%.") then
+			error("LibOO-1.0: Namespace names may not contain periods.", 2)
+		end
+
 		ns = {NewClass = NewClass}
 		setmetatable(ns, ns__metatable)
 		ns.__callbacks = LibStub("CallbackHandler-1.0"):New(ns)
@@ -494,7 +509,7 @@ end
 
 
 
---- Asserts that self is a TellMeWhen class.
+--- Asserts that self is a LibOO class.
 -- 
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsClass()
@@ -503,7 +518,7 @@ function Class:AssertSelfIsClass()
 	end
 end
 
---- Asserts that self is an instance of a TellMeWhen class.
+--- Asserts that self is an instance of a LibOO class.
 -- 
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsInstance()
