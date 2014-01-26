@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 10
+local MAJOR, MINOR = "LibOO-1.0", 11
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -120,12 +120,19 @@ local metamethods = {
 	__unm = true,
 }
 
+local funcsToCall = {}
+local depth = 0
 local function callFunc(class, instance, func, ...)
+	local startIndex = #funcsToCall + 1
+	depth = depth + 1
 
-	-- check for all functions that dont match exactly, like OnNewInstance_1, _foo, _bar, ...
+	-- Functions to call are placed in a single table to decrease garbage churn.
+	-- The segment of the table where functions are placed in this call will be iterated over,
+	-- and functions will be called based on where they are in the inheritance hierarchy
+
 	for k, v in pairs(class.instancemeta.__index) do
-		if type(k) == "string" and k:find("^" .. func) and k ~= func then
-			safecall(v, instance, ...)
+		if type(k) == "string" and k:find("^" .. func) then
+			funcsToCall[#funcsToCall + 1] = k
 		end
 	end
 	
@@ -136,18 +143,37 @@ local function callFunc(class, instance, func, ...)
 		-- iterating over an instance will only yield things explicity set on an instance -
 		-- it will never directly contain anything inherited from a class.
 		for k, v in pairs(instance) do
-			if type(k) == "string" and k:find("^" .. func) and k ~= func then
-				safecall(v, instance, ...)
+			if type(k) == "string" and k:find("^" .. func) then
+				funcsToCall[#funcsToCall + 1] = k
 			end
 		end
 	end
-	
-	
-	-- now check for the function that exactly matches. this should be called last because
-	-- it should be the function that handles the real class being instantiated, not any inherited classes
-	local normalFunc = instance[func]
-	if normalFunc then
-		safecall(normalFunc, instance, ...)
+
+	for _, classIter in ipairs(class.inherits) do
+		for i = startIndex, #funcsToCall do
+			local funcName = funcsToCall[i]
+			if funcName then
+				local funcToCall = instance[funcName]
+
+				if classIter[funcName] == funcToCall then
+					funcsToCall[i] = false
+					safecall(funcToCall, instance, ...)
+				end
+			end
+		end
+	end
+
+	for i = startIndex, #funcsToCall do
+		local funcName = funcsToCall[i]
+		if funcName then
+			safecall(instance[funcName], instance, ...)
+		end
+	end
+
+
+	depth = depth - 1
+	if depth == 0 then
+		wipe(funcsToCall)
 	end
 end
 
@@ -166,7 +192,7 @@ local function initializeClass(self)
 	end
 end
 
-local class__call = function(self, arg)
+local function class__call(self, arg)
 	-- allow something like Namespace:NewClass("Name"){Foo = function() end, Bar = 5}
 	if type(arg) == "table" then
 		for k, v in pairs(arg) do
@@ -182,7 +208,7 @@ local class__call = function(self, arg)
 	return self
 end
 
-local class__newindex = function(self, k, v)
+local function class__newindex(self, k, v)
 	-- Update/set all subclasses at all levels of inheritance
 	local existing = self[k]
 	if existing ~= v then
@@ -199,11 +225,15 @@ local class__newindex = function(self, k, v)
 	end
 end
 
+local function class__tostring(self)
+	return tostring(self.namespace) .. "." .. self.className
+end
+
 local weakMetatable = {
 	__mode = "kv"
 }
 
-local inherit = function(self, source)
+local function inherit(self, source)
 	if source then
 		local metatable = getmetatable(self)
 		local namespace = self.namespace
@@ -295,6 +325,7 @@ local function NewClass(namespace, className, ...)
 			isLibOOInstance = true,
 		},
 		__call = class__call,
+		__tostring = class__tostring,
 	}
 	
 	local class = {
@@ -334,6 +365,11 @@ local function NewClass(namespace, className, ...)
 	return class
 end
 
+local ns__metatable = {
+	__tostring = function(self)
+		return self.__name
+	end,
+}
 
 function LibOO:GetNamespace(namespace)
 	validateType("2 (namespace)", "LibOO:GetNamespace(namespace)", namespace, "string")
@@ -342,7 +378,9 @@ function LibOO:GetNamespace(namespace)
 
 	if not ns then
 		ns = {NewClass = NewClass}
+		setmetatable(ns, ns__metatable)
 		ns.__callbacks = LibStub("CallbackHandler-1.0"):New(ns)
+		ns.__name = namespace
 		LibOO.Namespaces[namespace] = ns
 	end
 
@@ -355,7 +393,7 @@ for _, namespace in pairs(LibOO.Namespaces) do
 end
 
 
-LibOONamespace = LibOO:GetNamespace(MAJOR)
+LibOONamespace = LibOO:GetNamespace(MAJOR:gsub("%.", ""))
 
 -- Define the base class. All other classes implicitly inherit from this class.
 local Class = LibOONamespace.Class or LibOONamespace:NewClass("Class")
@@ -552,12 +590,25 @@ end
 
 -- [INTERNAL]
 function Class:OnClassInherit_BaseClass(newClass)
-	for class in pairs(self.inherits) do
-		newClass.inherits[class] = true
+	-- for class in pairs(self.inherits) do
+	-- 	newClass.inherits[class] = true
+	-- 	class.inheritedBy[newClass] = true
+	-- end
+
+	for i, class in ipairs(self.inherits) do
+		if not newClass.inherits[class] then
+			tinsert(newClass.inherits, class)
+			newClass.inherits[class] = true
+		end
+
 		class.inheritedBy[newClass] = true
 	end
 	
-	newClass.inherits[self] = true
+	if not newClass.inherits[self] then
+		tinsert(newClass.inherits, self)
+		newClass.inherits[self] = true
+	end
+
 	self.inheritedBy[newClass] = true
 end
 
