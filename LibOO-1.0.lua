@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 12
+local MAJOR, MINOR = "LibOO-1.0", 13
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -328,6 +328,10 @@ end
 local function NewClass(namespace, className, ...)
 	validateType("2 (className)", "Namespace:NewClass(className, ...)", className, "string")
 	
+	if className:find("^__") then
+		error(MAJOR .. ": Class names may not start with two underscores (__) because this prefix is reserved for internal use by namespaces.", 2)
+	end
+
 	if namespace[className] then
 		error(MAJOR .. ": A class with name " .. className .. " already exists. You can't overwrite existing classes, so pick a different name", 2)
 	end
