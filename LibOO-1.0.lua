@@ -247,7 +247,6 @@ local function inherit(self, source)
 				if LibOO.Namespaces[ns] then
 					namespace = LibOO.Namespaces[ns]
 					source = class
-					print(namespace, source)
 				end
 			end
 		end
@@ -302,12 +301,14 @@ local function inherit(self, source)
 		end
 
 		if not didInherit then
-			error(("Could not figure out how to inherit %s into class %s. Are you sure it exists?"):format(source, self.className), 3)
+			error(("Could not figure out how to inherit %s into class %s. Are you sure it exists?"):format(source, tostring(self)), 3)
 		end
 		
 		if index then
-			for k, source in pairs(index) do
-				metatable.__index[k] = (metatable.__index[k] ~= nil and metatable.__index[k]) or source
+			for k, v in pairs(index) do
+				if metatable.__index[k] == nil then
+					metatable.__index[k] = v
+				end
 			end
 		end
 	end
@@ -326,14 +327,17 @@ end
 -- When conflicts between members of different inherited things arise, previously inherited members will not be overwritten.
 -- @return [Class] A new class that inherits from LibOO:GetNamespace("LibOO-1.0").Class and all other requested inheritances.
 local function NewClass(namespace, className, ...)
-	validateType("2 (className)", "Namespace:NewClass(className, ...)", className, "string")
 	
-	if className:find("^__") then
-		error(MAJOR .. ": Class names may not start with two underscores (__) because this prefix is reserved for internal use by namespaces.", 2)
-	end
+	if className then
+		validateType("2 (className)", "Namespace:NewClass(className, ...)", className, "string")
 
-	if namespace[className] then
-		error(MAJOR .. ": A class with name " .. className .. " already exists. You can't overwrite existing classes, so pick a different name", 2)
+		if className:find("^__") then
+			error(MAJOR .. ": Class names may not start with two underscores (__) because this prefix is reserved for internal use by namespaces.", 2)
+		end
+
+		if namespace[className] then
+			error(MAJOR .. ": A class with name " .. className .. " already exists. You can't overwrite existing classes, so pick a different name", 2)
+		end
 	end
 	
 	local metatable = {
@@ -353,6 +357,8 @@ local function NewClass(namespace, className, ...)
 		isLibOOInstance = false, -- Override the instancemeta so classes don't think they are instances.
 	}
 
+	local memAddr = tostring(class):gsub("table: ", "0x")
+
 	class.instancemeta = {__index = metatable.__index}
 	
 	setmetatable(class, metatable)
@@ -361,7 +367,8 @@ local function NewClass(namespace, className, ...)
 	-- Makes referencing the class really easy - don't have to define a class variable for instances,
 	-- and creates a unified way to definitely get the class for both classes and instances.
 	class.class = class
-	class.className = className
+
+	class.className = className or memAddr
 	class.namespace = namespace
 
 	if LibOONamespace then
@@ -373,7 +380,9 @@ local function NewClass(namespace, className, ...)
 		inherit(class, select(i, ...))
 	end
 
-	namespace[className] = class
+	if className then
+		namespace[className] = class
+	end
 
 	namespace.__callbacks:Fire("OnNewClass", class)
 
@@ -518,7 +527,7 @@ end
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsClass()
 	if not self.isLibOOClass then
-		error(("Caller must be the class %q, not an instance of the class"):format(self.className), 3)
+		error(("Caller must be the class %q, not an instance of the class"):format(tostring(self)), 3)
 	end
 end
 
@@ -527,7 +536,7 @@ end
 -- Throws a breaking error at the level of the caller's caller (user-level) if it is not.
 function Class:AssertSelfIsInstance()
 	if not self.isLibOOInstance then
-		error(("Caller must be an instance of the class %q, not the class itself"):format(self.className), 3)
+		error(("Caller must be an instance of the class %q, not the class itself"):format(tostring(self)), 3)
 	end
 end
 
