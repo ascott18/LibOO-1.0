@@ -1,6 +1,6 @@
 --- LibOO-1.0
 
-local MAJOR, MINOR = "LibOO-1.0", 13
+local MAJOR, MINOR = "LibOO-1.0", 14
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
