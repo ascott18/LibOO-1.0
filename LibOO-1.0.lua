@@ -318,15 +318,17 @@ end
 
 
 --- Creates a new class.
+-- @name Namespace:NewClass
 -- @param className [String] The name of the class to be created.
 -- @param ... [...] A list of things to inherit from. Valid parameters include the following (and each will be checked in the following order):
 -- * The name of another LibOO-1.0 class in the same namespace as the class being created.
 -- * The namespace and name for another LibOO-1.0 class, formatted as "Namespace.ClassName".
--- * A table whose values will be merged into the class.
+-- * A table that is a LibOO-1.0 class as returned by Namespace:NewClass()
+-- * A plain table whose values will be merged into the class.
 -- * The name of a Blizzard widget (like Frame, Button, EditBox, etc.) The class created will inherit the methods of that widget type, and instances of the class will be based on a new frame of that widget type.
--- * The name of a LibStub library that has an :Embed() method (many Ace3 libs do).
+-- * The name of a LibStub library that has an :Embed() method (many Ace3 libs do, e.g "AceEvent-3.0").
 -- 
--- When conflicts between members of different inherited things arise, previously inherited members will not be overwritten.
+-- When conflicts between members of different inherited things arise, previously inherited (i.e. non-nil) members will not be overwritten.
 -- @return [Class] A new class that inherits from LibOO:GetNamespace("LibOO-1.0").Class and all other requested inheritances.
 local function NewClass(namespace, className, ...)
 	
@@ -397,6 +399,11 @@ local ns__metatable = {
 	end,
 }
 
+
+--- Gets a namespace.
+-- A new namespace will be created if the namespace does not already exist.
+-- @param namespace [String] The name of the namespace to get or create.
+-- @return [Namespace} A LibOO-1.0 namespace that you can call Namespace:NewClass() on.
 function LibOO:GetNamespace(namespace)
 	validateType("2 (namespace)", "LibOO:GetNamespace(namespace)", namespace, "string")
 
