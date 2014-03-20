@@ -1,5 +1,4 @@
 -
-  type: luadoc
-  input-files: 
-    - "LibOO-1.0.lua"
-  output-directory: API
+    type: luadoc
+    input-file: "LibOO-1.0.lua"
+    output-page: API
