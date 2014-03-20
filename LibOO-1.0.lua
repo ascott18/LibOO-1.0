@@ -1,4 +1,6 @@
 --- LibOO-1.0
+-- @class file
+-- @name LibOO-1.0.lua
 
 local MAJOR, MINOR = "LibOO-1.0", 14
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
