@@ -2,7 +2,7 @@
 -- @class file
 -- @name LibOO-1.0.lua
 
-local MAJOR, MINOR = "LibOO-1.0", 14
+local MAJOR, MINOR = "LibOO-1.0", 15
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -200,7 +200,11 @@ local function class__call(self, arg)
 		for k, v in pairs(arg) do
 			if k == "METHOD_EXTENSIONS" and type(v) == "table" then
 				for methodName, func in pairs(v) do
-					self:ExtendMethod(methodName, func)
+					self:PostHookMethod(methodName, func)
+				end
+			elseif k == "METHOD_EXTENSIONS_PRE" and type(v) == "table" then
+				for methodName, func in pairs(v) do
+					self:PreHookMethod(methodName, func)
 				end
 			else
 				self[k] = v
@@ -507,16 +511,36 @@ end
 
 
 
---- Extends the specified method so that it when called, it will first call the original method being extended, and then it will call newFunction.
+--- Pre-hooks the specified method so that it when called, it will first call newFunction, and then it will call the original method being hooked.
 -- 
 -- Effectively functions as a post-hook.
 -- 
 -- If the requested method is not defined when this is called, newFunction will simply be set as that method with no hooking involved.
--- @param method [String] The name of the method on the class that should be extended.
+-- @param method [String] The name of the method on the class that should be hooked.
 -- @param newFunction [Function] The function that will be called after the original function is called.
-function Class:ExtendMethod(method, newFunction)
-	validateType("2 (method)", "Class:ExtendMethod(method, newFunction)", method, "!nil")
-	validateType("3 (newFunction)", "Class:ExtendMethod(method, newFunction)", newFunction, "function")
+function Class:PreHookMethod(method, newFunction)
+	validateType("2 (method)", "Class:PostHookMethod(method, newFunction)", method, "!nil")
+	validateType("3 (newFunction)", "Class:PostHookMethod(method, newFunction)", newFunction, "function")
+
+	local existingFunction = self[method]
+	if existingFunction then
+		self[method] = function(...)
+			newFunction(...)
+			existingFunction(...)
+		end
+	else
+		self[method] = newFunction
+	end
+end
+
+--- Post-hooks the specified method so that it when called, it will first call the original method being extended, and then it will call newFunction.
+-- 
+-- If the requested method is not defined when this is called, newFunction will simply be set as that method with no hooking involved.
+-- @param method [String] The name of the method on the class that should be hooked.
+-- @param newFunction [Function] The function that will be called after the original function is called.
+function Class:PostHookMethod(method, newFunction)
+	validateType("2 (method)", "Class:PostHookMethod(method, newFunction)", method, "!nil")
+	validateType("3 (newFunction)", "Class:PostHookMethod(method, newFunction)", newFunction, "function")
 
 	local existingFunction = self[method]
 	if existingFunction then
@@ -528,6 +552,9 @@ function Class:ExtendMethod(method, newFunction)
 		self[method] = newFunction
 	end
 end
+
+-- Backwards compatibility
+Class.ExtendMethod = Class.PostHookMethod
 
 
 
