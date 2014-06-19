@@ -2,7 +2,7 @@
 -- @class file
 -- @name LibOO-1.0.lua
 
-local MAJOR, MINOR = "LibOO-1.0", 15
+local MAJOR, MINOR = "LibOO-1.0", 16
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -241,6 +241,7 @@ local weakMetatable = {
 
 local function inherit(self, source)
 	if source then
+
 		local metatable = getmetatable(self)
 		local namespace = self.namespace
 		
@@ -252,21 +253,25 @@ local function inherit(self, source)
 			if ns and class then
 				if LibOO.Namespaces[ns] then
 					namespace = LibOO.Namespaces[ns]
-					source = class
+					source = namespace[class]
 				end
+			elseif namespace[source] then
+				source = namespace[source]
 			end
 		end
 
-		if namespace[source] then
-			namespace[source]:CallFunc("OnClassInherit", self)
-			
-			index = getmetatable(namespace[source]).__index
-			didInherit = true
-		
-		elseif type(source) == "table" then
+		if source == self then
+			error(("%s tried to inherit itself."):format(tostring(self)), 3)
+		end
+
+		if type(source) == "table" then
 
 			-- LibOO class inheritance (passed in class table)
 			if source.isLibOOClass and source.CallFunc then
+				if source.inherits[self] then
+					error(("%s can't inherit %s because it would create cyclical inheritance."):format(tostring(self), tostring(source)), 3)
+				end
+
 				source:CallFunc("OnClassInherit", self)
 				
 				index = getmetatable(source).__index
@@ -301,7 +306,7 @@ local function inherit(self, source)
 					lib:Embed(metatable.__index)
 					didInherit = true
 				else
-					error(format("Library %q does not have an Embed method", source), 2)
+					error(("Library %q does not have an :Embed() method"):format(source), 2)
 				end
 			end
 		end
@@ -385,7 +390,8 @@ local function NewClass(namespace, className, ...)
 
 	-- Inherit the requested classes/whatever
 	for i = 1, select("#", ...) do
-		inherit(class, select(i, ...))
+		local source = select(i, ...)
+		inherit(class, source)
 	end
 
 	if className then
