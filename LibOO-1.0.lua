@@ -2,7 +2,7 @@
 -- @class file
 -- @name LibOO-1.0.lua
 
-local MAJOR, MINOR = "LibOO-1.0", 17
+local MAJOR, MINOR = "LibOO-1.0", 18
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -239,7 +239,8 @@ local weakMetatable = {
 	__mode = "kv"
 }
 
-local knownBlizzWidgets = {}
+
+LibOO.knownBlizzWidgets = LibOO.knownBlizzWidgets or {}
 
 local function inherit(self, source)
 	if source then
@@ -287,7 +288,7 @@ local function inherit(self, source)
 		else
 		
 			-- Blizzard widget inheritance
-			if knownBlizzWidgets[source] == nil then
+			if LibOO.knownBlizzWidgets[source] == nil then
 				local success, frame = pcall(CreateFrame, source)
 
 				if success then
@@ -295,13 +296,13 @@ local function inherit(self, source)
 					-- it will block all keyboard input for some reason
 					frame:Hide()
 
-					knownBlizzWidgets[source] = frame
+					LibOO.knownBlizzWidgets[source] = frame
 				else
-					knownBlizzWidgets[source] = false
+					LibOO.knownBlizzWidgets[source] = false
 				end
 			end
 
-			local frame = knownBlizzWidgets[source]
+			local frame = LibOO.knownBlizzWidgets[source]
 			if frame then
 				self.isFrameObject = source or self.isFrameObject
 				rawset(self, "isFrameObject", rawget(self, "isFrameObject") or source)
