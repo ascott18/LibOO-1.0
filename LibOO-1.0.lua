@@ -2,7 +2,7 @@
 -- @class file
 -- @name LibOO-1.0.lua
 
-local MAJOR, MINOR = "LibOO-1.0", 18
+local MAJOR, MINOR = "LibOO-1.0", 19
 local LibOO, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibOO then return end
@@ -240,7 +240,7 @@ local weakMetatable = {
 }
 
 
-LibOO.knownBlizzWidgets = LibOO.knownBlizzWidgets or {}
+LibOO.knownBlizzWidgets = LibOO.knownBlizzWidgets or setmetatable({}, weakMetatable)
 
 local function inherit(self, source)
 	if source then
